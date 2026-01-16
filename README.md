@@ -1,30 +1,76 @@
-# React + TypeScript + Vite
+# Sample Manager
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, high-performance desktop application for managing your audio sample library. Built with Electron, React, and Vite.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+-   **Library Management**: Easily add and scan folders to build your sample database.
+-   **Fast Navigation**: Virtualized lists allow for smooth scrolling even with thousands of samples.
+-   **Audio Playback**: Integrated waveform player (using `wavesurfer.js`) for quick previewing.
+-   **Tagging System**: Organize your sounds with a custom tagging system (add/remove tags).
+-   **Search & Filter**:
+    -   Real-time search by name.
+    -   Filter by tags.
+    -   Sort by Name, Size, Duration, or Creation Date.
+-   **Persistent Library**: Your library state, including scanned samples and tags, is saved automatically.
+-   **Optimized Performance**: efficiently rescans folders and loads persistent data to minimize startup time.
 
-## Expanding the ESLint configuration
+## 🛠️ Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+-   **Runtime**: [Electron](https://www.electronjs.org/)
+-   **Frontend**: [React](https://react.dev/) with [TypeScript](https://www.typescriptlang.org/)
+-   **Build Tool**: [Vite](https://vitejs.dev/)
+-   **Audio Visualization**: [wavesurfer.js](https://wavesurfer-js.org/)
+-   **Metadata**: [music-metadata](https://github.com/borewit/music-metadata)
+-   **UI Virtualization**: [react-window](https://github.com/bvaughn/react-window)
+-   **Icons**: [Lucide React](https://lucide.dev/)
 
-- Configure the top-level `parserOptions` property like this:
+## 📦 Installation & Development
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
-```
+### Prerequisites
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+-   Node.js (v16 or higher recommended)
+-   npm or yarn
+
+### Steps
+
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/enorrmann/sample_manager.git
+    cd sample_manager
+    ```
+
+2.  **Install dependencies**
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
+
+3.  **Run in Development Mode**
+    Start the Vite dev server and Electron app:
+    ```bash
+    npm run dev
+    # or
+    yarn dev
+    ```
+
+4.  **Build for Production**
+    To build the application for your OS (configured for Linux AppImage/deb):
+    ```bash
+    npm run build
+    # or
+    yarn build
+    ```
+
+## 📖 Usage
+
+1.  **Add Folders**: Click the "Add Folder" button in the sidebar to select a directory on your computer containing audio samples.
+2.  **Scan**: The app will automatically scan the folder and add compatible audio files to your library.
+3.  **Preview**: Click on any sample in the list to play it. The waveform will appear in the player at the bottom.
+4.  **Tag**: Right-click or use the UI options to add tags to your samples for easier categorization.
+5.  **Search/Sort**: Use the search bar or sorting dropdowns to find specific sounds.
+
+## 📄 License
+
+[MIT](LICENSE)
