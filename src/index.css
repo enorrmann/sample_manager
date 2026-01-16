@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Palette - Dark Premium */
+  --color-bg-app: #121212;
+  --color-bg-sidebar: #1E1E1E;
+  --color-bg-card: #252525;
+  --color-bg-surface: #2E2E2E;
+
+  /* Accents */
+  --color-primary: #BB86FC;
+  --color-primary-hover: #9955E8;
+  --color-secondary: #03DAC6;
+  --color-error: #CF6679;
+
+  /* Text */
+  --color-text-primary: #E0E0E0;
+  --color-text-secondary: #AAAAAA;
+  --color-text-muted: #666666;
+
+  /* Borders */
+  --color-border: #333333;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+
+  /* Typography */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--color-bg-app);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  overflow: hidden;
+  /* App-like feel */
+  user-select: none;
+  /* Desktop app feel */
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-sidebar);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Spin animation for rescan button */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}

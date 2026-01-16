@@ -1,0 +1,222 @@
+import { dialog, ipcMain, app } from 'electron';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { v4 as uuidv4 } from 'uuid';
+import { parseFile } from 'music-metadata';
+import { inferTagsFromFilename } from './taggingUtils';
+
+const AUDIO_EXTENSIONS = new Set(['.wav', '.mp3', '.aiff', '.flac', '.ogg', '.m4a']);
+
+type Sample = {
+    id: string;
+    name: string;
+    path: string;
+    extension: string;
+    size: number;
+    createdAt: number;
+    duration: number;
+    format: string;
+    tags: string[];
+};
+
+async function getFilesRecursively(dir: string): Promise<string[]> {
+    const dirents = await fs.readdir(dir, { withFileTypes: true });
+    const files = await Promise.all(
+        dirents.map((dirent) => {
+            const res = path.resolve(dir, dirent.name);
+            return dirent.isDirectory() ? getFilesRecursively(res) : res;
+        })
+    );
+    return Array.prototype.concat(...files);
+}
+
+export async function registerHandlers() {
+    ipcMain.handle('dialog:openDirectory', async () => {
+        const { canceled, filePaths } = await dialog.showOpenDialog({
+            properties: ['openDirectory'],
+        });
+        if (canceled) {
+            return null;
+        }
+        return filePaths[0];
+    });
+
+    const dbPath = path.join(app.getPath('userData'), 'tags.json');
+    let tagsDb: Record<string, string[]> = {};
+
+    // Load DB
+    try {
+        const data = await fs.readFile(dbPath, 'utf-8');
+        tagsDb = JSON.parse(data);
+    } catch (e) {
+        // DB doesn't exist or is invalid, start fresh
+    }
+
+    const saveDb = async () => {
+        try {
+            await fs.writeFile(dbPath, JSON.stringify(tagsDb, null, 2));
+        } catch (e) {
+            console.error('Failed to save tags DB:', e);
+        }
+    };
+
+    ipcMain.handle('tags:update', async (_, filePath: string, tags: string[]) => {
+        tagsDb[filePath] = tags;
+        await saveDb();
+        return true;
+    });
+
+    const foldersDbPath = path.join(app.getPath('userData'), 'folders.json');
+    let foldersDb: string[] = [];
+
+    // Load Folders DB
+    try {
+        const data = await fs.readFile(foldersDbPath, 'utf-8');
+        foldersDb = JSON.parse(data);
+    } catch (e) {
+        // DB doesn't exist
+    }
+
+    const saveFoldersDb = async () => {
+        try {
+            await fs.writeFile(foldersDbPath, JSON.stringify(foldersDb, null, 2));
+        } catch (e) {
+            console.error('Failed to save folders DB:', e);
+        }
+    };
+
+    // Samples DB - persists scanned samples by folder
+    const samplesDbPath = path.join(app.getPath('userData'), 'samples.json');
+    let samplesDb: Record<string, Sample[]> = {};
+
+    // Load Samples DB
+    try {
+        const data = await fs.readFile(samplesDbPath, 'utf-8');
+        samplesDb = JSON.parse(data);
+    } catch (e) {
+        // DB doesn't exist
+    }
+
+    const saveSamplesDb = async () => {
+        try {
+            await fs.writeFile(samplesDbPath, JSON.stringify(samplesDb, null, 2));
+        } catch (e) {
+            console.error('Failed to save samples DB:', e);
+        }
+    };
+
+    ipcMain.handle('folders:get', async () => {
+        return foldersDb;
+    });
+
+    ipcMain.handle('folders:add', async (_, folderPath: string) => {
+        if (!foldersDb.includes(folderPath)) {
+            foldersDb.push(folderPath);
+            await saveFoldersDb();
+        }
+        return foldersDb;
+    });
+
+    ipcMain.handle('folders:remove', async (_, folderPath: string) => {
+        foldersDb = foldersDb.filter(f => f !== folderPath);
+        await saveFoldersDb();
+
+        // Also remove samples for this folder from DB
+        delete samplesDb[folderPath];
+        await saveSamplesDb();
+
+        return foldersDb;
+    });
+
+    // Get all persisted samples (no scanning)
+    ipcMain.handle('samples:get', async () => {
+        const allSamples: Sample[] = [];
+        for (const folder of foldersDb) {
+            const folderSamples = samplesDb[folder] || [];
+            allSamples.push(...folderSamples);
+        }
+        return allSamples;
+    });
+
+    // Rescan all folders and update DB
+    ipcMain.handle('samples:rescan', async () => {
+        const allSamples: Sample[] = [];
+
+        for (const folderPath of foldersDb) {
+            try {
+                const samples = await scanFolder(folderPath);
+                samplesDb[folderPath] = samples;
+                allSamples.push(...samples);
+            } catch (error) {
+                console.error(`Error rescanning folder ${folderPath}:`, error);
+            }
+        }
+
+        await saveSamplesDb();
+        return allSamples;
+    });
+
+    // Helper function to scan a folder
+    async function scanFolder(folderPath: string): Promise<Sample[]> {
+        const allFiles = await getFilesRecursively(folderPath);
+        const audioFiles = allFiles.filter((filePath) => {
+            const ext = path.extname(filePath).toLowerCase();
+            return AUDIO_EXTENSIONS.has(ext);
+        });
+
+        const samples: Sample[] = [];
+
+        for (const filePath of audioFiles) {
+            try {
+                const stats = await fs.stat(filePath);
+                let duration = 0;
+                let format = '';
+
+                try {
+                    const metadata = await parseFile(filePath, { skipCovers: true, duration: true });
+                    duration = metadata.format.duration || 0;
+                    format = metadata.format.container || '';
+                } catch (e) {
+                    console.warn(`Failed to parse metadata for ${filePath}`, e);
+                    format = 'unknown';
+                }
+
+                let tags = tagsDb[filePath] || [];
+
+                if (tags.length === 0) {
+                    tags = inferTagsFromFilename(filePath);
+                }
+
+                samples.push({
+                    id: uuidv4(),
+                    name: path.basename(filePath),
+                    path: filePath,
+                    extension: path.extname(filePath).toLowerCase(),
+                    size: stats.size,
+                    createdAt: stats.birthtimeMs,
+                    duration,
+                    format,
+                    tags
+                });
+            } catch (e) {
+                console.error(`Error processing file ${filePath}`, e);
+            }
+        }
+
+        return samples;
+    }
+
+    // Scan a single folder and persist to DB
+    ipcMain.handle('fs:scanFolder', async (_, folderPath: string) => {
+        try {
+            const samples = await scanFolder(folderPath);
+            // Persist to samples DB
+            samplesDb[folderPath] = samples;
+            await saveSamplesDb();
+            return samples;
+        } catch (error) {
+            console.error('Error scanning folder:', error);
+            throw error;
+        }
+    });
+}
