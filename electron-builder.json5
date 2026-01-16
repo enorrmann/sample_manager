@@ -1,9 +1,10 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "com.enorrmann.sample_manager",
   "asar": true,
-  "productName": "YourAppName",
+  "productName": "Sample Manager",
+  "copyright": "Copyright © 2026 enorrmann",
   "directories": {
     "output": "release/${version}"
   },
@@ -38,6 +39,7 @@
     "target": [
       "AppImage"
     ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "artifactName": "${productName}-${version}.${ext}",
+    "category": "Audio"
   }
 }

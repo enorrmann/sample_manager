@@ -1,7 +1,13 @@
 {
   "name": "sample_manager",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "An electron application for managing audio samples",
+  "author": "enorrmann <enorrmann@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/enorrmann/sample_manager.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

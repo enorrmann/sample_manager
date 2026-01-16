@@ -1,56 +1,40 @@
-import { protocol, app, BrowserWindow, net } from "electron";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import path from "node:path";
-protocol.registerSchemesAsPrivileged([
-  { scheme: "media", privileges: { secure: true, supportFetchAPI: true, bypassCSP: true } }
+import { protocol as s, app as n, BrowserWindow as r, net as R } from "electron";
+import { fileURLToPath as h, pathToFileURL as P } from "node:url";
+import o from "node:path";
+s.registerSchemesAsPrivileged([
+  { scheme: "media", privileges: { secure: !0, supportFetchAPI: !0, bypassCSP: !0 } }
 ]);
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname$1, "..");
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win;
-function createWindow() {
-  win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+const a = o.dirname(h(import.meta.url));
+process.env.APP_ROOT = o.join(a, "..");
+const i = process.env.VITE_DEV_SERVER_URL, T = o.join(process.env.APP_ROOT, "dist-electron"), c = o.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = i ? o.join(process.env.APP_ROOT, "public") : c;
+let e;
+function d() {
+  e = new r({
+    icon: o.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs")
+      preload: o.join(a, "preload.mjs")
     }
-  });
-  win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  });
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
-  }
+  }), e.webContents.on("did-finish-load", () => {
+    e == null || e.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  }), i ? e.loadURL(i) : e.loadFile(o.join(c, "index.html"));
 }
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    win = null;
-  }
+n.on("window-all-closed", () => {
+  process.platform !== "darwin" && (n.quit(), e = null);
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+n.on("activate", () => {
+  r.getAllWindows().length === 0 && d();
 });
-app.whenReady().then(() => {
-  import("./handlers-CAlLZ3bq.js").then((n) => n.X).then(async ({ registerHandlers }) => {
-    await registerHandlers();
-    protocol.handle("media", (req) => {
-      const pathToMedia = req.url.replace("media://", "");
-      const decodedPath = decodeURIComponent(pathToMedia);
-      return net.fetch(pathToFileURL(decodedPath).toString());
-    });
-    createWindow();
+n.whenReady().then(() => {
+  import("./handlers-BoYob0xL.js").then((t) => t.X).then(async ({ registerHandlers: t }) => {
+    await t(), s.handle("media", (l) => {
+      const p = l.url.replace("media://", ""), m = decodeURIComponent(p);
+      return R.fetch(P(m).toString());
+    }), d();
   });
 });
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  T as MAIN_DIST,
+  c as RENDERER_DIST,
+  i as VITE_DEV_SERVER_URL
 };
