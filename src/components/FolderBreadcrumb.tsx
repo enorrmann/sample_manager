@@ -82,8 +82,12 @@ export function FolderBreadcrumb() {
             borderRadius: '6px',
             fontSize: '13px',
             position: 'relative',
-            minWidth: '200px',
-            maxWidth: '500px'
+            width: 'fit-content',
+            maxWidth: '100%',
+            overflowX: 'auto',
+            msOverflowStyle: 'none',
+            scrollbarWidth: 'none',
+            whiteSpace: 'nowrap'
         }}>
             {/* Home / All samples button */}
             <button
