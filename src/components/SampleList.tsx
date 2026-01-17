@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSamples } from '../context/SampleContext';
-import { Play, Search, ArrowUpDown } from 'lucide-react';
+import { Play, Search, ArrowUpDown, FolderPlus, Check, X } from 'lucide-react';
 import { FixedSizeList as List } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import { FolderBreadcrumb } from './FolderBreadcrumb';
@@ -54,7 +54,9 @@ export function SampleList() {
         filterTags,
         setFilterTags,
         allTags,
-        selectedFolder
+        selectedFolder,
+        sets,
+        selectedSet
     } = useSamples();
 
     const [taggingSampleId, setTaggingSampleId] = useState<string | null>(null);
@@ -66,6 +68,14 @@ export function SampleList() {
         if (selectedFolder) {
             console.log('Filtering by folder:', selectedFolder);
             result = result.filter(s => s.path.startsWith(selectedFolder));
+        }
+
+        // Apply Set Filter
+        if (selectedSet) {
+            const currentSet = sets.find(s => s.id === selectedSet);
+            if (currentSet) {
+                result = result.filter(s => currentSet.sampleIds.includes(s.path));
+            }
         }
 
         // Apply Tag Filter
@@ -101,8 +111,105 @@ export function SampleList() {
         setFilterTags(newTags);
     };
 
-    // Grid template for columns: # Name Duration Format Tags
-    const gridTemplate = '40px 3fr 100px 100px 2fr';
+    const SetSelector = ({ sample }: { sample: any }) => {
+        const [isOpen, setIsOpen] = useState(false);
+        const { sets, addSampleToSet, removeSampleFromSet } = useSamples();
+
+        const toggleSet = (e: React.MouseEvent, setId: string, isInSet: boolean) => {
+            e.stopPropagation();
+            if (isInSet) {
+                removeSampleFromSet(setId, sample.path);
+            } else {
+                addSampleToSet(setId, sample.path);
+            }
+        };
+
+        return (
+            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(!isOpen);
+                    }}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--color-primary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        transition: 'background 0.2s'
+                    }}
+                    className="hover:bg-opacity-10 hover:bg-white"
+                >
+                    <FolderPlus size={16} />
+                </button>
+
+                {isOpen && (
+                    <>
+                        <div
+                            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }}
+                            onClick={() => setIsOpen(false)}
+                        />
+                        <div style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: '100%',
+                            backgroundColor: 'var(--color-bg-surface)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                            padding: '8px 0',
+                            zIndex: 999,
+                            minWidth: '160px'
+                        }}>
+                            <div style={{ padding: '4px 12px 8px', borderBottom: '1px solid var(--color-border)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Add to Set</span>
+                                <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
+                                    <X size={12} />
+                                </button>
+                            </div>
+                            {sets.length === 0 ? (
+                                <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>No sets found</div>
+                            ) : (
+                                sets.map(s => {
+                                    const isInSet = s.sampleIds.includes(sample.path);
+                                    return (
+                                        <div
+                                            key={s.id}
+                                            onClick={(e) => toggleSet(e, s.id, isInSet)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                cursor: 'pointer',
+                                                fontSize: '13px',
+                                                backgroundColor: 'transparent',
+                                                transition: 'background 0.2s'
+                                            }}
+                                            className="hover:bg-opacity-5 hover:bg-white"
+                                        >
+                                            <div style={{ width: '16px', display: 'flex', alignItems: 'center' }}>
+                                                {isInSet && <Check size={14} color="var(--color-primary)" />}
+                                            </div>
+                                            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+        );
+    };
+
+    // Grid template for columns: # Name Duration Format Tags Actions
+    const gridTemplate = '40px 3fr 100px 100px 2fr 40px';
 
     const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
         const sample = filteredAndSortedSamples[index];
@@ -212,6 +319,12 @@ export function SampleList() {
                             +
                         </button>
                     )}
+                </div>
+
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <SetSelector sample={sample} />
                 </div>
             </div>
         );
@@ -328,6 +441,7 @@ export function SampleList() {
                 <div>Duration</div>
                 <div>Format</div>
                 <div>Tags</div>
+                <div>Set</div>
             </div>
 
             {/* List Content */}

@@ -206,6 +206,58 @@ export async function registerHandlers() {
         return samples;
     }
 
+    // Sets DB
+    const setsDbPath = path.join(app.getPath('userData'), 'sets.json');
+    let setsDb: Record<string, { id: string, name: string, sampleIds: string[] }> = {};
+
+    try {
+        const data = await fs.readFile(setsDbPath, 'utf-8');
+        setsDb = JSON.parse(data);
+    } catch (e) {
+        // DB doesn't exist
+    }
+
+    const saveSetsDb = async () => {
+        try {
+            await fs.writeFile(setsDbPath, JSON.stringify(setsDb, null, 2));
+        } catch (e) {
+            console.error('Failed to save sets DB:', e);
+        }
+    };
+
+    ipcMain.handle('sets:get', async () => {
+        return Object.values(setsDb);
+    });
+
+    ipcMain.handle('sets:create', async (_, name: string) => {
+        const id = uuidv4();
+        setsDb[id] = { id, name, sampleIds: [] };
+        await saveSetsDb();
+        return setsDb[id];
+    });
+
+    ipcMain.handle('sets:delete', async (_, setId: string) => {
+        delete setsDb[setId];
+        await saveSetsDb();
+        return true;
+    });
+
+    ipcMain.handle('sets:addSample', async (_, setId: string, sampleId: string) => {
+        if (setsDb[setId] && !setsDb[setId].sampleIds.includes(sampleId)) {
+            setsDb[setId].sampleIds.push(sampleId);
+            await saveSetsDb();
+        }
+        return setsDb[setId];
+    });
+
+    ipcMain.handle('sets:removeSample', async (_, setId: string, sampleId: string) => {
+        if (setsDb[setId]) {
+            setsDb[setId].sampleIds = setsDb[setId].sampleIds.filter(id => id !== sampleId);
+            await saveSetsDb();
+        }
+        return setsDb[setId];
+    });
+
     // Scan a single folder and persist to DB
     ipcMain.handle('fs:scanFolder', async (_, folderPath: string) => {
         try {

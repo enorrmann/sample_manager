@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
-import { Sample, SortOption, SortDirection } from '../types';
+import { Sample, SortOption, SortDirection, SampleSet } from '../types';
 
 interface SampleContextType {
     samples: Sample[];
@@ -24,6 +24,13 @@ interface SampleContextType {
     setSelectedFolder: (folderPath: string | null) => void;
     rescanLibrary: () => Promise<void>;
     isRescanning: boolean;
+    sets: SampleSet[];
+    addSet: (name: string) => Promise<void>;
+    removeSet: (id: string) => Promise<void>;
+    addSampleToSet: (setId: string, sampleId: string) => Promise<void>;
+    removeSampleFromSet: (setId: string, sampleId: string) => Promise<void>;
+    selectedSet: string | null;
+    setSelectedSet: (id: string | null) => void;
 }
 
 const SampleContext = createContext<SampleContextType | undefined>(undefined);
@@ -38,6 +45,8 @@ export function SampleProvider({ children }: { children: ReactNode }) {
     const [sortOption, setSortOption] = useState<SortOption>('name');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
     const [searchQuery, setSearchQuery] = useState('');
+    const [sets, setSets] = useState<SampleSet[]>([]);
+    const [selectedSet, setSelectedSet] = useState<string | null>(null);
 
     // Load initial data from DB (no scanning)
     useEffect(() => {
@@ -52,6 +61,11 @@ export function SampleProvider({ children }: { children: ReactNode }) {
                 // @ts-ignore
                 const savedSamples = await window.ipcRenderer.invoke('samples:get');
                 setSamples(savedSamples);
+
+                // Load sets
+                // @ts-ignore
+                const savedSets = await window.ipcRenderer.invoke('sets:get');
+                setSets(savedSets);
             } catch (error) {
                 console.error('Failed to load library:', error);
             } finally {
@@ -185,6 +199,49 @@ export function SampleProvider({ children }: { children: ReactNode }) {
         await window.ipcRenderer.invoke('tags:update', sample.path, newTags);
     }, [samples]);
 
+    const addSet = useCallback(async (name: string) => {
+        try {
+            // @ts-ignore
+            const newSet = await window.ipcRenderer.invoke('sets:create', name);
+            setSets(prev => [...prev, newSet]);
+        } catch (error) {
+            console.error('Failed to create set:', error);
+        }
+    }, []);
+
+    const removeSet = useCallback(async (id: string) => {
+        try {
+            // @ts-ignore
+            await window.ipcRenderer.invoke('sets:delete', id);
+            setSets(prev => prev.filter(s => s.id !== id));
+            if (selectedSet === id) {
+                setSelectedSet(null);
+            }
+        } catch (error) {
+            console.error('Failed to delete set:', error);
+        }
+    }, [selectedSet]);
+
+    const addSampleToSet = useCallback(async (setId: string, sampleId: string) => {
+        try {
+            // @ts-ignore
+            const updatedSet = await window.ipcRenderer.invoke('sets:addSample', setId, sampleId);
+            setSets(prev => prev.map(s => s.id === setId ? updatedSet : s));
+        } catch (error) {
+            console.error('Failed to add sample to set:', error);
+        }
+    }, []);
+
+    const removeSampleFromSet = useCallback(async (setId: string, sampleId: string) => {
+        try {
+            // @ts-ignore
+            const updatedSet = await window.ipcRenderer.invoke('sets:removeSample', setId, sampleId);
+            setSets(prev => prev.map(s => s.id === setId ? updatedSet : s));
+        } catch (error) {
+            console.error('Failed to remove sample from set:', error);
+        }
+    }, []);
+
     const value = {
         samples,
         folders,
@@ -207,7 +264,14 @@ export function SampleProvider({ children }: { children: ReactNode }) {
         setFilterTags,
         allTags,
         rescanLibrary,
-        isRescanning
+        isRescanning,
+        sets,
+        addSet,
+        removeSet,
+        addSampleToSet,
+        removeSampleFromSet,
+        selectedSet,
+        setSelectedSet
     };
 
     return <SampleContext.Provider value={value}>{children}</SampleContext.Provider>;

@@ -112,7 +112,25 @@ const TreeItem = ({
 };
 
 export function Sidebar() {
-    const { folders, addFolder, removeFolder, samples, isLoading, selectedFolder, setSelectedFolder, rescanLibrary, isRescanning } = useSamples();
+    const [isCreatingSet, setIsCreatingSet] = useState(false);
+    const [newSetName, setNewSetName] = useState('');
+
+    const {
+        folders,
+        addFolder,
+        removeFolder,
+        samples,
+        isLoading,
+        selectedFolder,
+        setSelectedFolder,
+        rescanLibrary,
+        isRescanning,
+        sets,
+        addSet,
+        removeSet,
+        selectedSet,
+        setSelectedSet
+    } = useSamples();
 
     const tree = useMemo(() => {
         const paths = samples.map(s => s.path);
@@ -125,6 +143,36 @@ export function Sidebar() {
         if (confirm('Remove this folder from library?')) {
             removeFolder(path);
         }
+    };
+
+    const handleAddSet = () => {
+        setIsCreatingSet(true);
+    };
+
+    const submitNewSet = () => {
+        const name = newSetName.trim();
+        if (name) {
+            addSet(name);
+            setNewSetName('');
+            setIsCreatingSet(false);
+        }
+    };
+
+    const handleRemoveSet = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (confirm('Delete this set?')) {
+            removeSet(id);
+        }
+    };
+
+    const selectFolder = (path: string | null) => {
+        setSelectedSet(null);
+        setSelectedFolder(path);
+    };
+
+    const selectSet = (id: string | null) => {
+        setSelectedFolder(null);
+        setSelectedSet(id);
     };
 
     return (
@@ -145,14 +193,14 @@ export function Sidebar() {
 
             <div style={{ padding: 'var(--space-3)' }}>
                 <div
-                    onClick={() => setSelectedFolder(null)}
+                    onClick={() => selectFolder(null)}
                     style={{
                         padding: '8px',
                         borderRadius: '4px',
                         cursor: 'pointer',
-                        backgroundColor: selectedFolder === null ? 'rgba(187, 134, 252, 0.1)' : 'transparent',
-                        color: selectedFolder === null ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                        fontWeight: selectedFolder === null ? 600 : 400,
+                        backgroundColor: (selectedFolder === null && selectedSet === null) ? 'rgba(187, 134, 252, 0.1)' : 'transparent',
+                        color: (selectedFolder === null && selectedSet === null) ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                        fontWeight: (selectedFolder === null && selectedSet === null) ? 600 : 400,
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px'
@@ -187,9 +235,117 @@ export function Sidebar() {
                                     node={node}
                                     level={0}
                                     selectedFolder={selectedFolder}
-                                    onSelect={setSelectedFolder}
+                                    onSelect={(path) => selectFolder(path)}
                                     onRemoveRoot={handleRemoveRoot}
                                 />
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: 'var(--space-2)' }}>
+                        <h3 style={{
+                            padding: '0 var(--space-3)',
+                            textTransform: 'uppercase',
+                            fontSize: '11px',
+                            color: 'var(--color-text-muted)',
+                            marginBottom: 'var(--space-2)',
+                            fontWeight: 600
+                        }}>
+                            Sets
+                        </h3>
+                        <button
+                            onClick={handleAddSet}
+                            style={{ border: 'none', background: 'transparent', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px' }}
+                        >
+                            <Plus size={14} />
+                        </button>
+                    </div>
+
+                    {isCreatingSet && (
+                        <div style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-2)' }}>
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="New set name..."
+                                value={newSetName}
+                                onChange={(e) => setNewSetName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') submitNewSet();
+                                    if (e.key === 'Escape') {
+                                        setIsCreatingSet(false);
+                                        setNewSetName('');
+                                    }
+                                }}
+                                onBlur={() => {
+                                    if (!newSetName.trim()) setIsCreatingSet(false);
+                                }}
+                                style={{
+                                    width: '100%',
+                                    backgroundColor: 'var(--color-bg-surface)',
+                                    border: '1px solid var(--color-primary)',
+                                    borderRadius: '4px',
+                                    padding: '4px 8px',
+                                    fontSize: '12px',
+                                    color: 'var(--color-text-primary)',
+                                    outline: 'none'
+                                }}
+                            />
+                        </div>
+                    )}
+
+                    {sets.length === 0 && !isCreatingSet ? (
+                        <div style={{ padding: '0 var(--space-3)', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: 'var(--font-size-sm)' }}>
+                            No sets created
+                        </div>
+                    ) : (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                            {sets.map(set => (
+                                <li key={set.id}>
+                                    <div
+                                        className="group"
+                                        onClick={() => selectSet(set.id)}
+                                        style={{
+                                            paddingLeft: '12px',
+                                            paddingRight: '8px',
+                                            paddingTop: '4px',
+                                            paddingBottom: '4px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            cursor: 'pointer',
+                                            color: selectedSet === set.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                                            backgroundColor: selectedSet === set.id ? 'rgba(187, 134, 252, 0.1)' : 'transparent',
+                                            fontSize: '13px',
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        <Music size={14} fill={selectedSet === set.id ? "currentColor" : "none"} />
+                                        <span style={{
+                                            flex: 1,
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            fontWeight: selectedSet === set.id ? 600 : 400
+                                        }}>
+                                            {set.name}
+                                        </span>
+                                        <button
+                                            onClick={(e) => handleRemoveSet(e, set.id)}
+                                            className="remove-btn"
+                                            style={{
+                                                border: 'none',
+                                                background: 'transparent',
+                                                color: 'var(--color-text-muted)',
+                                                cursor: 'pointer',
+                                                display: 'none', // Shown on hover via CSS in existing style block
+                                                padding: '2px'
+                                            }}
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                </li>
                             ))}
                         </ul>
                     )}
@@ -251,6 +407,6 @@ export function Sidebar() {
                 li:hover > div > .remove-btn { display: block !important; }
                 .remove-btn:hover { color: #ff5555 !important; }
             `}</style>
-        </div>
+        </div >
     );
 }
