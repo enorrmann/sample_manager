@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { useSamples } from '../context/SampleContext';
-import { Play, Pause, Volume2, SkipBack } from 'lucide-react';
+import { Play, Pause, Volume2, SkipBack, Repeat } from 'lucide-react';
 
 export function Player() {
-    const { currentSample } = useSamples();
+    const { currentSample, isLooping, setIsLooping } = useSamples();
     const containerRef = useRef<HTMLDivElement>(null);
     const wavesurfer = useRef<WaveSurfer | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -22,13 +22,12 @@ export function Player() {
             barGap: 3,
             barRadius: 3,
             height: 60,
-            normalize: true,
+            normalize: false, // Set to false to avoid any accidental gain adjustments
             minPxPerSec: 50,
         });
 
         wavesurfer.current.on('play', () => setIsPlaying(true));
         wavesurfer.current.on('pause', () => setIsPlaying(false));
-        wavesurfer.current.on('finish', () => setIsPlaying(false));
 
         return () => {
             wavesurfer.current?.destroy();
@@ -36,19 +35,90 @@ export function Player() {
     }, []);
 
     useEffect(() => {
+        if (!wavesurfer.current) return;
+        const media = wavesurfer.current.getMediaElement();
+        if (media) media.loop = false; // Disable native loop to use manual gapless logic
+
+        const handleFinish = () => {
+            if (!isLooping) {
+                setIsPlaying(false);
+            } else {
+                // Manual fallback for finish event
+                if (wavesurfer.current) {
+                    wavesurfer.current.setTime(0);
+                    wavesurfer.current.play();
+                }
+            }
+        };
+
+        wavesurfer.current.on('finish', handleFinish);
+        return () => {
+            wavesurfer.current?.un('finish', handleFinish);
+        };
+    }, [isLooping]);
+
+    // High-resolution loop check to avoid end-of-file gap/fade
+    useEffect(() => {
+        if (!isLooping || !isPlaying || !wavesurfer.current) return;
+
+        let rafId: number;
+        const ws = wavesurfer.current;
+
+        const checkLoop = () => {
+            if (ws && !ws.getMediaElement().paused) {
+                const currentTime = ws.getCurrentTime();
+                const duration = ws.getDuration();
+
+                // If we're within 40ms of the end, jump back to start.
+                // This is typically enough to bypass the browser's "ended" gap/fade
+                if (duration > 0 && currentTime >= duration - 0.09) {
+                    ws.setTime(0);
+                }
+            }
+            rafId = requestAnimationFrame(checkLoop);
+        };
+
+        rafId = requestAnimationFrame(checkLoop);
+        return () => cancelAnimationFrame(rafId);
+    }, [isLooping, isPlaying, currentSample]);
+
+    useEffect(() => {
         if (!currentSample || !wavesurfer.current) return;
 
-        // Load audio file
-        // In Electron, we can load local files using the file:// protocol if security allows or we use a custom protocol
-        // We use a custom 'media://' protocol to bypass local resource restrictions
-        const url = `media://${currentSample.path}`;
-        wavesurfer.current.load(url);
+        let objectUrl: string | null = null;
 
-        // Auto play on select?
-        wavesurfer.current.once('ready', () => {
-            wavesurfer.current?.play();
-        });
+        const loadAudio = async () => {
+            const url = `media://${currentSample.path}`;
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                objectUrl = URL.createObjectURL(blob);
 
+                if (wavesurfer.current) {
+                    wavesurfer.current.load(objectUrl);
+
+                    wavesurfer.current.once('ready', () => {
+                        if (wavesurfer.current) {
+                            const media = wavesurfer.current.getMediaElement();
+                            if (media) media.loop = false; // Always keep native loop off for manual logic
+                            wavesurfer.current.play();
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load audio via blob:", e);
+                // Fallback to direct URL if fetch fails
+                wavesurfer.current?.load(url);
+            }
+        };
+
+        loadAudio();
+
+        return () => {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
     }, [currentSample]);
 
     const togglePlay = () => {
@@ -125,6 +195,17 @@ export function Player() {
                         }}
                     >
                         {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginLeft: '2px' }} />}
+                    </button>
+                    <button
+                        onClick={() => setIsLooping(!isLooping)}
+                        style={{
+                            color: isLooping ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                            transition: 'color 0.2s',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}
+                    >
+                        <Repeat size={18} />
                     </button>
                 </div>
 

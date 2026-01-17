@@ -31,6 +31,8 @@ interface SampleContextType {
     removeSampleFromSet: (setId: string, sampleId: string) => Promise<void>;
     selectedSet: string | null;
     setSelectedSet: (id: string | null) => void;
+    isLooping: boolean;
+    setIsLooping: (loop: boolean) => void;
 }
 
 const SampleContext = createContext<SampleContextType | undefined>(undefined);
@@ -47,6 +49,7 @@ export function SampleProvider({ children }: { children: ReactNode }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [sets, setSets] = useState<SampleSet[]>([]);
     const [selectedSet, setSelectedSet] = useState<string | null>(null);
+    const [isLooping, setIsLooping] = useState(false);
 
     // Load initial data from DB (no scanning)
     useEffect(() => {
@@ -271,7 +274,9 @@ export function SampleProvider({ children }: { children: ReactNode }) {
         addSampleToSet,
         removeSampleFromSet,
         selectedSet,
-        setSelectedSet
+        setSelectedSet,
+        isLooping,
+        setIsLooping
     };
 
     return <SampleContext.Provider value={value}>{children}</SampleContext.Provider>;
