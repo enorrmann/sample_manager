@@ -33,10 +33,10 @@ const TreeItem = ({
                 style={{
                     paddingLeft: `${level * 12 + 8}px`,
                     paddingRight: '8px',
-                    paddingTop: '4px',
-                    paddingBottom: '4px',
+                    paddingTop: '6px',
+                    paddingBottom: '6px',
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     cursor: 'pointer',
                     color: isExactSelected ? 'var(--color-primary)' : 'var(--color-text-secondary)',
                     backgroundColor: isExactSelected ? 'rgba(187, 134, 252, 0.1)' : 'transparent',
@@ -64,8 +64,12 @@ const TreeItem = ({
                     flex: 1,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontWeight: isExactSelected ? 600 : 400
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    wordBreak: 'break-word',
+                    fontWeight: isExactSelected ? 600 : 400,
+                    lineHeight: '1.3'
                 }}>
                     {node.name}
                 </span>
@@ -177,7 +181,7 @@ export function Sidebar() {
 
     return (
         <div style={{
-            width: '250px',
+            width: 'clamp(250px, 20vw, 350px)',
             backgroundColor: 'var(--color-bg-sidebar)',
             borderRight: '1px solid var(--color-border)',
             display: 'flex',
@@ -309,10 +313,10 @@ export function Sidebar() {
                                         style={{
                                             paddingLeft: '12px',
                                             paddingRight: '8px',
-                                            paddingTop: '4px',
-                                            paddingBottom: '4px',
+                                            paddingTop: '6px',
+                                            paddingBottom: '6px',
                                             display: 'flex',
-                                            alignItems: 'center',
+                                            alignItems: 'flex-start',
                                             cursor: 'pointer',
                                             color: selectedSet === set.id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
                                             backgroundColor: selectedSet === set.id ? 'rgba(187, 134, 252, 0.1)' : 'transparent',
@@ -325,8 +329,12 @@ export function Sidebar() {
                                             flex: 1,
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                            fontWeight: selectedSet === set.id ? 600 : 400
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            wordBreak: 'break-word',
+                                            fontWeight: selectedSet === set.id ? 600 : 400,
+                                            lineHeight: '1.3'
                                         }}>
                                             {set.name}
                                         </span>
