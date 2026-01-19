@@ -102,7 +102,7 @@ export function SampleList() {
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [samples, searchQuery, sortOption, sortDirection, filterTags, selectedFolder]);
+    }, [samples, searchQuery, sortOption, sortDirection, filterTags, selectedFolder, selectedSet, sets]);
 
     const toggleFilterTag = (tag: string) => {
         const newTags = filterTags.includes(tag)
