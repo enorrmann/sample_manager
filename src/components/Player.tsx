@@ -174,7 +174,7 @@ export function Player() {
             }}>
 
                 <div style={{ width: '200px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontSize: '12px', fontWeight: 600 }}>
-                    {currentSample?.name || '-'}
+                    {currentSample ? currentSample.path.split(/[/\\]/).pop() : '-'}
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1, justifyContent: 'center' }}>

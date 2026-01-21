@@ -32,11 +32,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     }
 }
 
-function formatDuration(seconds: number) {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-}
+
 
 export function SampleList() {
     const {
@@ -46,7 +42,6 @@ export function SampleList() {
         searchQuery,
         setSearchQuery,
         sortOption,
-        setSortOption,
         sortDirection,
         toggleSortDirection,
         addTag,
@@ -59,7 +54,7 @@ export function SampleList() {
         selectedSet
     } = useSamples();
 
-    const [taggingSampleId, setTaggingSampleId] = useState<string | null>(null);
+    const [taggingPath, setTaggingPath] = useState<string | null>(null);
 
     const filteredAndSortedSamples = useMemo(() => {
         let result = samples;
@@ -85,18 +80,20 @@ export function SampleList() {
 
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
-            result = result.filter(s => s.name.toLowerCase().includes(q));
+            result = result.filter(s => {
+                const name = s.path.split(/[/\\]/).pop() || '';
+                return name.toLowerCase().includes(q);
+            });
         }
 
         console.log('Filtered samples:', result.length, 'Total:', samples.length);
 
         return result.sort((a, b) => {
-            let valA = a[sortOption];
-            let valB = b[sortOption];
+            let valA = a.path.split(/[/\\]/).pop() || '';
+            let valB = b.path.split(/[/\\]/).pop() || '';
 
-            // Handle strings case insensitive
-            if (typeof valA === 'string') valA = valA.toLowerCase();
-            if (typeof valB === 'string') valB = valB.toLowerCase();
+            valA = valA.toLowerCase();
+            valB = valB.toLowerCase();
 
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
@@ -208,13 +205,14 @@ export function SampleList() {
         );
     };
 
-    // Grid template for columns: # Name Duration Format Tags Actions
-    const gridTemplate = '40px 3fr 100px 100px 2fr 40px';
+    // Grid template for columns: # Name Tags Actions
+    const gridTemplate = '40px 1fr 2fr 40px';
 
     const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
         const sample = filteredAndSortedSamples[index];
-        const isPlaying = currentSample?.id === sample.id;
-        const isTagging = taggingSampleId === sample.id;
+        const isPlaying = currentSample?.path === sample.path;
+        const isTagging = taggingPath === sample.path;
+        const name = sample.path.split(/[/\\]/).pop() || '';
 
         return (
             <div
@@ -237,9 +235,7 @@ export function SampleList() {
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     {isPlaying ? <Play size={14} fill="currentColor" /> : <span style={{ color: 'var(--color-text-muted)' }}>{index + 1}</span>}
                 </div>
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sample.name}</div>
-                <div style={{ color: 'var(--color-text-secondary)' }}>{formatDuration(sample.duration)}</div>
-                <div style={{ color: 'var(--color-text-muted)', textTransform: 'uppercase', fontSize: '11px', marginTop: '2px' }}>{sample.extension.replace('.', '')}</div>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
                 <div style={{ display: 'flex', gap: '4px', overflow: 'hidden', alignItems: 'center', flexWrap: 'wrap', height: '100%' }}>
                     {sample.tags.map(t => (
                         <span
@@ -259,7 +255,7 @@ export function SampleList() {
                             <div
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    removeTag(sample.id, t);
+                                    removeTag(sample.path, t);
                                 }}
                                 style={{ cursor: 'pointer', opacity: 0.6, fontWeight: 'bold' }}
                             >
@@ -287,23 +283,23 @@ export function SampleList() {
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     const val = e.currentTarget.value.trim();
-                                    if (val) addTag(sample.id, val);
-                                    setTaggingSampleId(null);
+                                    if (val) addTag(sample.path, val);
+                                    setTaggingPath(null);
                                 } else if (e.key === 'Escape') {
-                                    setTaggingSampleId(null);
+                                    setTaggingPath(null);
                                 }
                             }}
                             onBlur={(e) => {
                                 const val = e.target.value.trim();
-                                if (val) addTag(sample.id, val);
-                                setTaggingSampleId(null);
+                                if (val) addTag(sample.path, val);
+                                setTaggingPath(null);
                             }}
                         />
                     ) : (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setTaggingSampleId(sample.id);
+                                setTaggingPath(sample.path);
                             }}
                             style={{
                                 fontSize: '10px',
@@ -368,22 +364,6 @@ export function SampleList() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <select
-                            value={sortOption}
-                            onChange={(e) => setSortOption(e.target.value as any)}
-                            style={{
-                                backgroundColor: 'var(--color-bg-surface)',
-                                color: 'var(--color-text-secondary)',
-                                border: 'none',
-                                padding: '8px',
-                                borderRadius: '6px'
-                            }}
-                        >
-                            <option value="name">Name</option>
-                            <option value="duration">Duration</option>
-                            <option value="size">Size</option>
-                            <option value="createdAt">Date</option>
-                        </select>
                         <button onClick={toggleSortDirection} style={{ padding: '8px', color: 'var(--color-text-secondary)' }}>
                             <ArrowUpDown size={18} />
                         </button>
@@ -438,8 +418,6 @@ export function SampleList() {
             }}>
                 <div>#</div>
                 <div>Name</div>
-                <div>Duration</div>
-                <div>Format</div>
                 <div>Tags</div>
                 <div>Set</div>
             </div>

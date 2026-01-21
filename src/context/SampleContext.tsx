@@ -14,8 +14,8 @@ interface SampleContextType {
     toggleSortDirection: () => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
-    addTag: (sampleId: string, tag: string) => void;
-    removeTag: (sampleId: string, tag: string) => void;
+    addTag: (path: string, tag: string) => void;
+    removeTag: (path: string, tag: string) => void;
     filterTags: string[];
     setFilterTags: (tags: string[]) => void;
     allTags: Set<string>;
@@ -27,8 +27,8 @@ interface SampleContextType {
     sets: SampleSet[];
     addSet: (name: string) => Promise<void>;
     removeSet: (id: string) => Promise<void>;
-    addSampleToSet: (setId: string, sampleId: string) => Promise<void>;
-    removeSampleFromSet: (setId: string, sampleId: string) => Promise<void>;
+    addSampleToSet: (setId: string, path: string) => Promise<void>;
+    removeSampleFromSet: (setId: string, path: string) => Promise<void>;
     selectedSet: string | null;
     setSelectedSet: (id: string | null) => void;
     isLooping: boolean;
@@ -164,15 +164,15 @@ export function SampleProvider({ children }: { children: ReactNode }) {
         setAllTags(tags);
     }, [samples]);
 
-    const addTag = useCallback(async (sampleId: string, tag: string) => {
-        const sample = samples.find(s => s.id === sampleId);
+    const addTag = useCallback(async (path: string, tag: string) => {
+        const sample = samples.find(s => s.path === path);
         if (!sample) return;
 
         const newTags = [...sample.tags, tag];
 
         // Optimistic update
         setSamples(prev => prev.map(s => {
-            if (s.id === sampleId && !s.tags.includes(tag)) {
+            if (s.path === path && !s.tags.includes(tag)) {
                 return { ...s, tags: newTags };
             }
             return s;
@@ -180,18 +180,18 @@ export function SampleProvider({ children }: { children: ReactNode }) {
 
         // Persist
         // @ts-ignore
-        await window.ipcRenderer.invoke('tags:update', sample.path, newTags);
+        await window.ipcRenderer.invoke('tags:update', path, newTags);
     }, [samples]);
 
-    const removeTag = useCallback(async (sampleId: string, tag: string) => {
-        const sample = samples.find(s => s.id === sampleId);
+    const removeTag = useCallback(async (path: string, tag: string) => {
+        const sample = samples.find(s => s.path === path);
         if (!sample) return;
 
         const newTags = sample.tags.filter(t => t !== tag);
 
         // Optimistic update
         setSamples(prev => prev.map(s => {
-            if (s.id === sampleId) {
+            if (s.path === path) {
                 return { ...s, tags: newTags };
             }
             return s;
@@ -199,7 +199,7 @@ export function SampleProvider({ children }: { children: ReactNode }) {
 
         // Persist
         // @ts-ignore
-        await window.ipcRenderer.invoke('tags:update', sample.path, newTags);
+        await window.ipcRenderer.invoke('tags:update', path, newTags);
     }, [samples]);
 
     const addSet = useCallback(async (name: string) => {
@@ -225,20 +225,20 @@ export function SampleProvider({ children }: { children: ReactNode }) {
         }
     }, [selectedSet]);
 
-    const addSampleToSet = useCallback(async (setId: string, sampleId: string) => {
+    const addSampleToSet = useCallback(async (setId: string, path: string) => {
         try {
             // @ts-ignore
-            const updatedSet = await window.ipcRenderer.invoke('sets:addSample', setId, sampleId);
+            const updatedSet = await window.ipcRenderer.invoke('sets:addSample', setId, path);
             setSets(prev => prev.map(s => s.id === setId ? updatedSet : s));
         } catch (error) {
             console.error('Failed to add sample to set:', error);
         }
     }, []);
 
-    const removeSampleFromSet = useCallback(async (setId: string, sampleId: string) => {
+    const removeSampleFromSet = useCallback(async (setId: string, path: string) => {
         try {
             // @ts-ignore
-            const updatedSet = await window.ipcRenderer.invoke('sets:removeSample', setId, sampleId);
+            const updatedSet = await window.ipcRenderer.invoke('sets:removeSample', setId, path);
             setSets(prev => prev.map(s => s.id === setId ? updatedSet : s));
         } catch (error) {
             console.error('Failed to remove sample from set:', error);

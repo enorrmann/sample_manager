@@ -1,21 +1,12 @@
 import { dialog, ipcMain, app } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { v4 as uuidv4 } from 'uuid';
-import { parseFile } from 'music-metadata';
 import { inferTagsFromFilename } from './taggingUtils';
 
 const AUDIO_EXTENSIONS = new Set(['.wav', '.mp3', '.aiff', '.flac', '.ogg', '.m4a']);
 
 type Sample = {
-    id: string;
-    name: string;
     path: string;
-    extension: string;
-    size: number;
-    createdAt: number;
-    duration: number;
-    format: string;
     tags: string[];
 };
 
@@ -168,19 +159,6 @@ export async function registerHandlers() {
 
         for (const filePath of audioFiles) {
             try {
-                const stats = await fs.stat(filePath);
-                let duration = 0;
-                let format = '';
-
-                try {
-                    const metadata = await parseFile(filePath, { skipCovers: true, duration: true });
-                    duration = metadata.format.duration || 0;
-                    format = metadata.format.container || '';
-                } catch (e) {
-                    console.warn(`Failed to parse metadata for ${filePath}`, e);
-                    format = 'unknown';
-                }
-
                 let tags = tagsDb[filePath] || [];
 
                 if (tags.length === 0) {
@@ -188,14 +166,7 @@ export async function registerHandlers() {
                 }
 
                 samples.push({
-                    id: uuidv4(),
-                    name: path.basename(filePath),
                     path: filePath,
-                    extension: path.extname(filePath).toLowerCase(),
-                    size: stats.size,
-                    createdAt: stats.birthtimeMs,
-                    duration,
-                    format,
                     tags
                 });
             } catch (e) {
@@ -230,7 +201,7 @@ export async function registerHandlers() {
     });
 
     ipcMain.handle('sets:create', async (_, name: string) => {
-        const id = uuidv4();
+        const id = path.basename(name) + '-' + Date.now(); // Simple ID for sets is still fine, but we could use just name if we want. Let's keep a unique ID for sets themselves.
         setsDb[id] = { id, name, sampleIds: [] };
         await saveSetsDb();
         return setsDb[id];

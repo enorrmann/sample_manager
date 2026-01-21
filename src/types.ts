@@ -1,12 +1,5 @@
 export type Sample = {
-    id: string;
-    name: string;
     path: string;
-    extension: string;
-    size: number;
-    createdAt: number;
-    duration: number;
-    format: string;
     tags: string[];
 };
 
