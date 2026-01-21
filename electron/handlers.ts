@@ -7,7 +7,7 @@ const AUDIO_EXTENSIONS = new Set(['.wav', '.mp3', '.aiff', '.flac', '.ogg', '.m4
 
 type Sample = {
     path: string;
-    tags: string[];
+    tags?: string[];
 };
 
 async function getFiles(dir: string): Promise<string[]> {
@@ -136,10 +136,11 @@ export async function registerHandlers() {
         const allSamples: Sample[] = [];
         for (const folder of foldersDb) {
             const folderSamples = samplesDb[folder] || [];
-            // Reconstruct absolute paths
+            // Reconstruct absolute paths and ensure tags is defined
             const mappedSamples = folderSamples.map(s => ({
                 ...s,
-                path: path.join(folder, s.path)
+                path: path.join(folder, s.path),
+                tags: s.tags || []
             }));
             allSamples.push(...mappedSamples);
         }
@@ -155,10 +156,11 @@ export async function registerHandlers() {
                 const samples = await scanFolder(folderPath);
                 samplesDb[folderPath] = samples;
 
-                // Reconstruct absolute paths for return
+                // Reconstruct absolute paths for return and ensure tags
                 const mappedSamples = samples.map(s => ({
                     ...s,
-                    path: path.join(folderPath, s.path)
+                    path: path.join(folderPath, s.path),
+                    tags: s.tags || []
                 }));
                 allSamples.push(...mappedSamples);
             } catch (error) {
@@ -188,10 +190,15 @@ export async function registerHandlers() {
                     tags = inferTagsFromFilename(filePath);
                 }
 
-                samples.push({
-                    path: path.relative(folderPath, filePath),
-                    tags
-                });
+                const sample: Sample = {
+                    path: path.relative(folderPath, filePath)
+                };
+
+                if (tags.length > 0) {
+                    sample.tags = tags;
+                }
+
+                samples.push(sample);
             } catch (e) {
                 console.error(`Error processing file ${filePath}`, e);
             }
@@ -260,10 +267,11 @@ export async function registerHandlers() {
             samplesDb[folderPath] = samples;
             await saveSamplesDb();
 
-            // Reconstruct absolute paths for frontend
+            // Reconstruct absolute paths for frontend and ensure tags
             return samples.map(s => ({
                 ...s,
-                path: path.join(folderPath, s.path)
+                path: path.join(folderPath, s.path),
+                tags: s.tags || []
             }));
         } catch (error) {
             console.error('Error scanning folder:', error);
