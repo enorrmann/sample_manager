@@ -10,15 +10,27 @@ type Sample = {
     tags: string[];
 };
 
-async function getFilesRecursively(dir: string): Promise<string[]> {
-    const dirents = await fs.readdir(dir, { withFileTypes: true });
-    const files = await Promise.all(
-        dirents.map((dirent) => {
-            const res = path.resolve(dir, dirent.name);
-            return dirent.isDirectory() ? getFilesRecursively(res) : res;
-        })
-    );
-    return Array.prototype.concat(...files);
+async function getFiles(dir: string): Promise<string[]> {
+    const files: string[] = [];
+    const stack = [dir];
+
+    while (stack.length > 0) {
+        const currentPath = stack.pop()!;
+        try {
+            const dirents = await fs.readdir(currentPath, { withFileTypes: true });
+            for (const dirent of dirents) {
+                const res = path.resolve(currentPath, dirent.name);
+                if (dirent.isDirectory()) {
+                    stack.push(res);
+                } else {
+                    files.push(res);
+                }
+            }
+        } catch (e) {
+            console.error(`Error reading directory ${currentPath}:`, e);
+        }
+    }
+    return files;
 }
 
 export async function registerHandlers() {
@@ -124,7 +136,12 @@ export async function registerHandlers() {
         const allSamples: Sample[] = [];
         for (const folder of foldersDb) {
             const folderSamples = samplesDb[folder] || [];
-            allSamples.push(...folderSamples);
+            // Reconstruct absolute paths
+            const mappedSamples = folderSamples.map(s => ({
+                ...s,
+                path: path.join(folder, s.path)
+            }));
+            allSamples.push(...mappedSamples);
         }
         return allSamples;
     });
@@ -137,7 +154,13 @@ export async function registerHandlers() {
             try {
                 const samples = await scanFolder(folderPath);
                 samplesDb[folderPath] = samples;
-                allSamples.push(...samples);
+
+                // Reconstruct absolute paths for return
+                const mappedSamples = samples.map(s => ({
+                    ...s,
+                    path: path.join(folderPath, s.path)
+                }));
+                allSamples.push(...mappedSamples);
             } catch (error) {
                 console.error(`Error rescanning folder ${folderPath}:`, error);
             }
@@ -149,7 +172,7 @@ export async function registerHandlers() {
 
     // Helper function to scan a folder
     async function scanFolder(folderPath: string): Promise<Sample[]> {
-        const allFiles = await getFilesRecursively(folderPath);
+        const allFiles = await getFiles(folderPath);
         const audioFiles = allFiles.filter((filePath) => {
             const ext = path.extname(filePath).toLowerCase();
             return AUDIO_EXTENSIONS.has(ext);
@@ -166,7 +189,7 @@ export async function registerHandlers() {
                 }
 
                 samples.push({
-                    path: filePath,
+                    path: path.relative(folderPath, filePath),
                     tags
                 });
             } catch (e) {
@@ -233,10 +256,15 @@ export async function registerHandlers() {
     ipcMain.handle('fs:scanFolder', async (_, folderPath: string) => {
         try {
             const samples = await scanFolder(folderPath);
-            // Persist to samples DB
+            // Persist to samples DB (already contains relative paths)
             samplesDb[folderPath] = samples;
             await saveSamplesDb();
-            return samples;
+
+            // Reconstruct absolute paths for frontend
+            return samples.map(s => ({
+                ...s,
+                path: path.join(folderPath, s.path)
+            }));
         } catch (error) {
             console.error('Error scanning folder:', error);
             throw error;
