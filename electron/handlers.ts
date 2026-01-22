@@ -141,7 +141,9 @@ export async function registerHandlers() {
                 ...s,
                 path: path.join(folder, s.path)
             }));
-            allSamples.push(...mappedSamples);
+            for (const s of mappedSamples) {
+                allSamples.push(s);
+            }
         }
         return allSamples;
     });
@@ -160,7 +162,9 @@ export async function registerHandlers() {
                     ...s,
                     path: path.join(folderPath, s.path)
                 }));
-                allSamples.push(...mappedSamples);
+                for (const s of mappedSamples) {
+                    allSamples.push(s);
+                }
             } catch (error) {
                 console.error(`Error rescanning folder ${folderPath}:`, error);
             }
