@@ -103,10 +103,31 @@ export async function registerHandlers() {
     const saveSamplesDb = async () => {
         try {
             await fs.writeFile(samplesDbPath, JSON.stringify(samplesDb, null, 2));
+            flushCachedSamples();
         } catch (e) {
             console.error('Failed to save samples DB:', e);
         }
     };
+
+    let cachedAllSamples: Sample[] = [];
+
+    const flushCachedSamples = () => {
+        const allSamples: Sample[] = [];
+        for (const folder of foldersDb) {
+            const folderSamples = samplesDb[folder] || [];
+            const mappedSamples = folderSamples.map(s => ({
+                ...s,
+                path: path.join(folder, s.path)
+            }));
+            for (const s of mappedSamples) {
+                allSamples.push(s);
+            }
+        }
+        cachedAllSamples = allSamples;
+    };
+
+    // Initial flush after loading DBs
+    flushCachedSamples();
 
     ipcMain.handle('folders:get', async () => {
         return foldersDb;
@@ -131,22 +152,19 @@ export async function registerHandlers() {
         return foldersDb;
     });
 
+    ipcMain.handle('library:get', async () => {
+        console.log('[Backend] library:get - fetching full library data');
+        return {
+            folders: foldersDb,
+            samples: cachedAllSamples,
+            sets: Object.values(setsDb)
+        };
+    });
+
     // Get all persisted samples (no scanning)
     ipcMain.handle('samples:get', async () => {
-        console.log('[Backend] samples:get - fetching persisted samples from DB');
-        const allSamples: Sample[] = [];
-        for (const folder of foldersDb) {
-            const folderSamples = samplesDb[folder] || [];
-            // Reconstruct absolute paths
-            const mappedSamples = folderSamples.map(s => ({
-                ...s,
-                path: path.join(folder, s.path)
-            }));
-            for (const s of mappedSamples) {
-                allSamples.push(s);
-            }
-        }
-        return allSamples;
+        console.log('[Backend] samples:get - fetching persisted samples from cache');
+        return cachedAllSamples;
     });
 
     // Rescan all folders and update DB

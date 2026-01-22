@@ -63,18 +63,10 @@ export function SampleProvider({ children }: { children: ReactNode }) {
             setIsLoading(true);
             try {
                 // @ts-ignore
-                const savedFolders = await window.ipcRenderer.invoke('folders:get');
-                setFolders(savedFolders);
-
-                // Load samples from DB - no scanning
-                // @ts-ignore
-                const savedSamples = await window.ipcRenderer.invoke('samples:get');
-                setSamples(savedSamples);
-
-                // Load sets
-                // @ts-ignore
-                const savedSets = await window.ipcRenderer.invoke('sets:get');
-                setSets(savedSets);
+                const library = await window.ipcRenderer.invoke('library:get');
+                setFolders(library.folders);
+                setSamples(library.samples);
+                setSets(library.sets);
             } catch (error) {
                 console.error('Failed to load library:', error);
             } finally {

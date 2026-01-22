@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useSamples } from '../context/SampleContext';
 import { Folder, Plus, Music, ChevronRight, ChevronDown, Trash2, RefreshCw } from 'lucide-react';
 import { buildFolderTree, TreeNode } from '../utils/fileTree';
@@ -16,9 +16,16 @@ const TreeItem = ({
     onSelect: (path: string) => void;
     onRemoveRoot?: (path: string) => void;
 }) => {
-    const [isExpanded, setIsExpanded] = useState(false); // Default collapsed
+    const [isExpanded, setIsExpanded] = useState(false);
     const hasChildren = Object.keys(node.children).length > 0;
     const isExactSelected = selectedFolder === node.path;
+
+    // Auto-expand if the selected folder is a descendant of this node
+    useEffect(() => {
+        if (selectedFolder && selectedFolder.startsWith(node.path + '/') && !isExpanded) {
+            setIsExpanded(true);
+        }
+    }, [selectedFolder, node.path]);
 
     const handleExpandToggle = (e: React.MouseEvent) => {
         e.stopPropagation();

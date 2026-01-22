@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSamples } from '../context/SampleContext';
-import { Play, Search, ArrowUpDown, FolderPlus, Check, X } from 'lucide-react';
+import { Play, Search, ArrowUpDown, FolderPlus, Check, X, MapPin } from 'lucide-react';
 import { FixedSizeList as List } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import { FolderBreadcrumb } from './FolderBreadcrumb';
@@ -50,8 +50,10 @@ export function SampleList() {
         setFilterTags,
         allTags,
         selectedFolder,
+        setSelectedFolder,
         sets,
-        selectedSet
+        selectedSet,
+        setSelectedSet
     } = useSamples();
 
     const [taggingPath, setTaggingPath] = useState<string | null>(null);
@@ -205,8 +207,8 @@ export function SampleList() {
         );
     };
 
-    // Grid template for columns: # Name Tags Actions
-    const gridTemplate = '40px 1fr 2fr 40px';
+    // Grid template for columns: # Name Tags Actions Locate
+    const gridTemplate = '40px 1fr 2fr 40px 40px';
 
     const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
         const sample = filteredAndSortedSamples[index];
@@ -322,6 +324,33 @@ export function SampleList() {
                 >
                     <SetSelector sample={sample} />
                 </div>
+
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            const parentPath = sample.path.substring(0, sample.path.lastIndexOf('/'));
+                            setSelectedSet(null);
+                            setSelectedFolder(parentPath);
+                        }}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            transition: 'color 0.2s'
+                        }}
+                        className="hover:text-primary"
+                        title="Locate in sidebar"
+                    >
+                        <MapPin size={16} />
+                    </button>
+                </div>
             </div>
         );
     }
@@ -420,6 +449,7 @@ export function SampleList() {
                 <div>Name</div>
                 <div>Tags</div>
                 <div>Set</div>
+                <div>Locate</div>
             </div>
 
             {/* List Content */}
