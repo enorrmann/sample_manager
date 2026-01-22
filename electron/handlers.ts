@@ -133,6 +133,7 @@ export async function registerHandlers() {
 
     // Get all persisted samples (no scanning)
     ipcMain.handle('samples:get', async () => {
+        console.log('[Backend] samples:get - fetching persisted samples from DB');
         const allSamples: Sample[] = [];
         for (const folder of foldersDb) {
             const folderSamples = samplesDb[folder] || [];
@@ -176,6 +177,7 @@ export async function registerHandlers() {
 
     // Helper function to scan a folder
     async function scanFolder(folderPath: string): Promise<Sample[]> {
+        console.log(`[Backend] scanFolder - scanning filesystem: ${folderPath}`);
         const allFiles = await getFiles(folderPath);
         const audioFiles = allFiles.filter((filePath) => {
             const ext = path.extname(filePath).toLowerCase();

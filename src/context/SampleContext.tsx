@@ -33,6 +33,10 @@ interface SampleContextType {
     setSelectedSet: (id: string | null) => void;
     isLooping: boolean;
     setIsLooping: (loop: boolean) => void;
+    loopStart: number;
+    setLoopStart: (val: number) => void;
+    loopEnd: number;
+    setLoopEnd: (val: number) => void;
 }
 
 const SampleContext = createContext<SampleContextType | undefined>(undefined);
@@ -50,6 +54,8 @@ export function SampleProvider({ children }: { children: ReactNode }) {
     const [sets, setSets] = useState<SampleSet[]>([]);
     const [selectedSet, setSelectedSet] = useState<string | null>(null);
     const [isLooping, setIsLooping] = useState(false);
+    const [loopStart, setLoopStart] = useState(0);
+    const [loopEnd, setLoopEnd] = useState(0);
 
     // Load initial data from DB (no scanning)
     useEffect(() => {
@@ -276,7 +282,11 @@ export function SampleProvider({ children }: { children: ReactNode }) {
         selectedSet,
         setSelectedSet,
         isLooping,
-        setIsLooping
+        setIsLooping,
+        loopStart,
+        setLoopStart,
+        loopEnd,
+        setLoopEnd
     };
 
     return <SampleContext.Provider value={value}>{children}</SampleContext.Provider>;

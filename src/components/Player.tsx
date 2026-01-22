@@ -2,16 +2,30 @@ import React, { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { useSamples } from '../context/SampleContext';
 import { Play, Pause, Volume2, SkipBack, Repeat } from 'lucide-react';
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js';
 
 export function Player() {
-    const { currentSample, isLooping, setIsLooping } = useSamples();
+    const {
+        currentSample,
+        isLooping,
+        setIsLooping,
+        loopStart,
+        setLoopStart,
+        loopEnd,
+        setLoopEnd
+    } = useSamples();
     const containerRef = useRef<HTMLDivElement>(null);
     const wavesurfer = useRef<WaveSurfer | null>(null);
+    const regionsRef = useRef<any>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [volume, setVolume] = useState(1);
+    const [duration, setDuration] = useState(0);
 
     useEffect(() => {
         if (!containerRef.current) return;
+
+        const regions = RegionsPlugin.create();
+        regionsRef.current = regions;
 
         wavesurfer.current = WaveSurfer.create({
             container: containerRef.current,
@@ -22,8 +36,23 @@ export function Player() {
             barGap: 3,
             barRadius: 3,
             height: 60,
-            normalize: false, // Set to false to avoid any accidental gain adjustments
+            normalize: false,
             minPxPerSec: 50,
+            plugins: [regions]
+        });
+
+        wavesurfer.current.on('ready', () => {
+            const d = wavesurfer.current?.getDuration() || 0;
+            setDuration(d);
+            // If loopEnd is 0 or exceeds duration, set it to duration
+            if (loopEnd === 0 || loopEnd > d) {
+                setLoopEnd(d);
+            }
+        });
+
+        regions.on('region-updated', (region) => {
+            setLoopStart(region.start);
+            setLoopEnd(region.end);
         });
 
         wavesurfer.current.on('play', () => setIsPlaying(true));
@@ -57,7 +86,7 @@ export function Player() {
         };
     }, [isLooping]);
 
-    // High-resolution loop check to avoid end-of-file gap/fade
+    // Higher frequency loop check
     useEffect(() => {
         if (!isLooping || !isPlaying || !wavesurfer.current) return;
 
@@ -67,12 +96,10 @@ export function Player() {
         const checkLoop = () => {
             if (ws && !ws.getMediaElement().paused) {
                 const currentTime = ws.getCurrentTime();
-                const duration = ws.getDuration();
+                const endPos = loopEnd > 0 ? loopEnd : ws.getDuration();
 
-                // If we're within 40ms of the end, jump back to start.
-                // This is typically enough to bypass the browser's "ended" gap/fade
-                if (duration > 0 && currentTime >= duration - 0.09) {
-                    ws.setTime(0);
+                if (endPos > 0 && currentTime >= endPos - 0.08) {
+                    ws.setTime(loopStart);
                 }
             }
             rafId = requestAnimationFrame(checkLoop);
@@ -80,7 +107,22 @@ export function Player() {
 
         rafId = requestAnimationFrame(checkLoop);
         return () => cancelAnimationFrame(rafId);
-    }, [isLooping, isPlaying, currentSample]);
+    }, [isLooping, isPlaying, currentSample, loopStart, loopEnd]);
+
+    // Update region when loop points change
+    useEffect(() => {
+        if (!regionsRef.current || !duration) return;
+
+        regionsRef.current.clearRegions();
+        regionsRef.current.addRegion({
+            id: 'loop-region',
+            start: loopStart,
+            end: loopEnd || duration,
+            color: 'rgba(187, 134, 252, 0.2)',
+            drag: true,
+            resize: true,
+        });
+    }, [loopStart, loopEnd, duration]);
 
     useEffect(() => {
         if (!currentSample || !wavesurfer.current) return;
@@ -100,7 +142,11 @@ export function Player() {
                     wavesurfer.current.once('ready', () => {
                         if (wavesurfer.current) {
                             const media = wavesurfer.current.getMediaElement();
-                            if (media) media.loop = false; // Always keep native loop off for manual logic
+                            if (media) media.loop = false;
+                            const d = wavesurfer.current.getDuration();
+                            setDuration(d);
+                            setLoopStart(0);
+                            setLoopEnd(d);
                             wavesurfer.current.play();
                         }
                     });
@@ -209,7 +255,48 @@ export function Player() {
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '150px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: 'var(--color-text-muted)', fontSize: '11px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>Start</span>
+                        <input
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            max={loopEnd}
+                            value={loopStart.toFixed(3)}
+                            onChange={(e) => setLoopStart(parseFloat(e.target.value) || 0)}
+                            style={{
+                                width: '60px',
+                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-text-primary)',
+                                padding: '2px 4px',
+                                borderRadius: '4px'
+                            }}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>End</span>
+                        <input
+                            type="number"
+                            step="0.001"
+                            min={loopStart}
+                            max={duration}
+                            value={loopEnd.toFixed(3)}
+                            onChange={(e) => setLoopEnd(parseFloat(e.target.value) || duration)}
+                            style={{
+                                width: '60px',
+                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-text-primary)',
+                                padding: '2px 4px',
+                                borderRadius: '4px'
+                            }}
+                        />
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px' }}>
                     <Volume2 size={16} color="var(--color-text-muted)" />
                     <input
                         type="range"
