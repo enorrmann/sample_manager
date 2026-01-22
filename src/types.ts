@@ -1,6 +1,6 @@
 export type Sample = {
     path: string;
-    tags?: string[];
+    tags: string[];
 };
 
 export type SortOption = 'name' | 'size' | 'duration' | 'createdAt';
